@@ -37,8 +37,13 @@ def login_required(f):
 
 @app.route("/")
 def home():
-    user = db.get_information(session.get('username'))
-    return render_template("home.html", logged_in=session.get('logged_in'), user=user)
+    users = db.get_users()
+    print(users)
+    if session['logged_in']:
+        current_user = db.get_information(session.get('username'))
+    else: 
+        current_user = None
+    return render_template("home.html", logged_in=session.get('logged_in'), current_user=current_user, users=users)
 
 
 @app.route("/account", methods=['GET', 'POST'])
