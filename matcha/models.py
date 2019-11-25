@@ -26,7 +26,7 @@ class Database:
     def add_user(self, username, email, password, name, lastname):
         sql = 'INSERT INTO users (username, name, lastName, email, password) VALUES(?,?,?,?,?)'
         cur = self.__conn.cursor()
-        cur.execute(sql, (username, email, lastname, name, password))
+        cur.execute(sql, (username, name, lastname, email, password))
         self.__conn.commit()
     
 

@@ -27,6 +27,7 @@ def home():
 def account():
     # Get all the users information
     user = db.get_information(session.get('username'))
+    print(user)
     if request.method == 'POST':
         username = request.form.get('userName')
 
@@ -67,6 +68,7 @@ def login():
         
 @app.route("/register", methods=['GET', 'POST'])
 def register():
+    errors = []
     if request.method == 'POST':
         errors = registration_validate()
 
