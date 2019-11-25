@@ -1,11 +1,10 @@
 from matcha import app, socket, db
-from flask import render_template, redirect, url_for, request, flash, session
+from flask import render_template, redirect, url_for, request, flash, session, abort
 from matcha.forms import registration_validate
 from werkzeug import secure_filename
 from functools import wraps
 from PIL import Image
 import os, secrets
-
 
 
 
@@ -34,16 +33,18 @@ def login_required(f):
     return wrapper
 
 
-
+@app.route('/home')
 @app.route("/")
 def home():
-    users = db.get_users()
-    print(users)
-    if session['logged_in']:
-        current_user = db.get_information(session.get('username'))
-    else: 
-        current_user = None
-    return render_template("home.html", logged_in=session.get('logged_in'), current_user=current_user, users=users)
+    db.get_posts()
+    posts = db.get_posts()
+    # print(posts)
+    # if session.get('logged_in'):
+    #     current_user = db.get_information(session.get('username'))
+    # else: 
+    #     current_user = None
+    return render_template("home.html", logged_in=session.get('logged_in'), posts=posts)
+
 
 
 @app.route("/account", methods=['GET', 'POST'])
@@ -61,33 +62,33 @@ def account():
         image_file = request.files['image']
 
         if username != user['username']:
-            if not db.run_ret('SELECT * FROM users WHERE username=?', (username,)):
-                db.run('UPDATE users SET username=? WHERE id=?', (username, user['id']))
+            if not db.run_ret('SELECT * FROM users WHERE username=%s', (username,)):
+                db.run('UPDATE users SET username=%s WHERE id=%s', (username, user['id']))
                 session['username'] = username
                 return redirect( url_for("account"))
             else:
                 errors.append("The username is already taken")
         
         if email != user['email']:
-            if not db.run_ret('SELECT * FROM users WHERE email=?', (email,)):
-                db.run('UPDATE users SET email=? WHERE id=?', (email, user['id']))
+            if not db.run_ret('SELECT * FROM users WHERE email=%s', (email,)):
+                db.run('UPDATE users SET email=%s WHERE id=%s', (email, user['id']))
                 return redirect( url_for('account') )
             else:
                 errors.append("The email is already taken")
 
         if firstname != user['name']:
-            db.run('UPDATE users SET name=? WHERE id=?', (firstname, user['id']))
+            db.run('UPDATE users SET name=%s WHERE id=%s', (firstname, user['id']))
             return redirect( url_for('account') )
 
         if lastname != user['lastName']:
-            db.run('UPDATE users SET lastName=? WHERE id=?', (lastname, user['id']))
+            db.run('UPDATE users SET lastName=%s WHERE id=%s', (lastname, user['id']))
             return redirect( url_for('account') )
 
         print(image_file)
         if image_file:
             pic_file = save_picture(image_file)
             print(pic_file)
-            db.run('UPDATE users SET image_name=? WHERE id=?', (pic_file, user['id']))
+            db.run('UPDATE users SET image_name=%s WHERE id=%s', (pic_file, user['id']))
             return redirect( url_for('account') )
 
 
@@ -143,3 +144,65 @@ def register():
                 flash(error, "danger")
     
     return render_template("register.html")
+
+
+@app.route('/post/new', methods=['GET', 'POST'])
+@login_required
+def new_post():
+    # Get the users posts.
+    user = db.get_information(session.get('username'))
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        db.add_post(title, content, user['id'])
+        flash("Successfully posted", 'success')
+        return redirect( url_for('home') )
+    return render_template('create_post.html', logged_in=session.get('logged_in'))
+
+@app.route('/post/<int:post_id>')
+@login_required
+def post(post_id):
+    post = db.get_post(post_id)
+    print(post)
+    return render_template('post.html',logged_in=session.get('logged_in'), current_user=session.get('username'), post=post)
+
+
+@app.route('/post/<int:post_id>/update', methods=['GET', 'POST'])
+@login_required
+def update_post(post_id):
+    post = db.get_post(post_id)
+    if session.get('username') != post['author']['username']:
+        abort(403)
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        sql_1 = 'UPDATE posts SET title=%s WHERE id=%s'
+        sql_2 = 'UPDATE posts SET  content=%s WHERE id=%s'
+        db.run(sql_1, (title, post['id']))
+        db.run(sql_2, (content, post['id']))
+
+        flash("The post was updated successfully", 'success')
+        return redirect( url_for('post', post_id=post_id) )
+    print(post)
+    return render_template('update_post.html', logged_in=session.get('logged_in'), current_user=session.get('username'), post=post)
+
+@app.route('/post/<int:post_id>/delete', methods=['GET', 'POST'])
+@login_required
+def delete_post(post_id):
+    post = db.get_post(post_id)
+    if post['author']['username'] != session.get('username'):
+        abort(403)
+    sql = 'DELETE FROM posts WHERE id=%s'
+    db.run(sql, (post['id'],))
+    flash('Post was deleted!', 'info')
+    return redirect( url_for('home') )
+
+
+@app.route('/user/<string:username>')
+def user_posts(username):
+    user = db.get_information(username)
+    user_posts = db.get_user_posts(user['id'])
+    print(user_posts)
+    return render_template('user_posts.html', logged_in=session.get('logged_in'), posts=user_posts)
+    

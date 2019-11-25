@@ -33,7 +33,8 @@
                     <!-- Navbar Right Side -->
                     <div class="navbar-nav">
                         {% if logged_in %}
-                        <a href="{{ url_for('account') }}" class="nav-item nav-link">Account</a>
+                        <a class="nav-item nav-link" href="{{ url_for('new_post') }}">Post</a>
+                        <a href="{{ url_for('account') }}" class="nav-item nav-link">Profile</a>
                         <a href="{{ url_for('logout') }}" class="nav-item nav-link">Logout</a>
                         {% else %}
                         <a class="nav-item nav-link" href="{{ url_for('login') }}">Login</a>
@@ -63,10 +64,10 @@
                     <h3>Our Sidebar</h3>
                     <p class='text-muted'>You can put any information here you'd like.
                         <ul class="list-group">
-                            <li class="list-group-item list-group-item-light">Latest Posts</li>
-                            <li class="list-group-item list-group-item-light">Announcements</li>
-                            <li class="list-group-item list-group-item-light">Calendars</li>
-                            <li class="list-group-item list-group-item-light">etc</li>
+                            <li class="list-group-item list-group-item-light">Posts</li>
+                            <li class="list-group-item list-group-item-light">Find users(There can be a better way to phrase this)</li>
+                            <li class="list-group-item list-group-item-light">Chat</li>
+                            <li class="list-group-item list-group-item-light">Your rating</li>
                         </ul>
                     </p>
                 </div>
