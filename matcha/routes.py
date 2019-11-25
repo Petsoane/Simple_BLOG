@@ -1,8 +1,26 @@
 from matcha import app, socket, db
 from flask import render_template, redirect, url_for, request, flash, session
 from matcha.forms import registration_validate
+from werkzeug import secure_filename
 from functools import wraps
+from PIL import Image
+import os, secrets
 
+
+
+
+def save_picture(form_pic):
+    rand_hex = secrets.token_hex(8)
+    _, f_ext = os.path.splitext(secure_filename(form_pic.filename))
+    pic_fn =  rand_hex + f_ext
+    pic_path = os.path.join(app.root_path, 'static/profile_pics', pic_fn)
+
+    # form_pic.save(pic_path)
+    i = Image.open(form_pic.stream)
+    i.thumbnail((200,200))
+
+    i.save(pic_path)
+    return pic_fn
 
 logged_in_users = []
 
@@ -19,17 +37,28 @@ def login_required(f):
 
 @app.route("/")
 def home():
-    return render_template("home.html", logged_in=session.get('logged_in'))
+    users = db.get_users()
+    print(users)
+    if session['logged_in']:
+        current_user = db.get_information(session.get('username'))
+    else: 
+        current_user = None
+    return render_template("home.html", logged_in=session.get('logged_in'), current_user=current_user, users=users)
 
 
 @app.route("/account", methods=['GET', 'POST'])
 @login_required
 def account():
+    errors = []
     # Get all the users information
     user = db.get_information(session.get('username'))
     print(user)
     if request.method == 'POST':
         username = request.form.get('userName')
+        email = request.form.get('email')
+        firstname = request.form.get('firstName')
+        lastname = request.form.get('lastName')
+        image_file = request.files['image']
 
         if username != user['username']:
             if not db.run_ret('SELECT * FROM users WHERE username=?', (username,)):
@@ -37,7 +66,34 @@ def account():
                 session['username'] = username
                 return redirect( url_for("account"))
             else:
-                flash("The user name is already taken, Try another", "danger")
+                errors.append("The username is already taken")
+        
+        if email != user['email']:
+            if not db.run_ret('SELECT * FROM users WHERE email=?', (email,)):
+                db.run('UPDATE users SET email=? WHERE id=?', (email, user['id']))
+                return redirect( url_for('account') )
+            else:
+                errors.append("The email is already taken")
+
+        if firstname != user['name']:
+            db.run('UPDATE users SET name=? WHERE id=?', (firstname, user['id']))
+            return redirect( url_for('account') )
+
+        if lastname != user['lastName']:
+            db.run('UPDATE users SET lastName=? WHERE id=?', (lastname, user['id']))
+            return redirect( url_for('account') )
+
+        print(image_file)
+        if image_file:
+            pic_file = save_picture(image_file)
+            print(pic_file)
+            db.run('UPDATE users SET image_name=? WHERE id=?', (pic_file, user['id']))
+            return redirect( url_for('account') )
+
+
+        if errors:
+            for error in errors:
+                flash(error, "danger")
     return render_template("account.html", user=user, logged_in=session.get('logged_in'))
 
 

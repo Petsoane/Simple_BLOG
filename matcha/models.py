@@ -68,11 +68,27 @@ class Database:
         ret = cur.fetchone()
         return False if ret else True
 
+    def get_users(self):
+        sql = 'SELECT * FROM users'
+        keys = ('id', 'username', 'name', 'lastName', 'email', 'sex', 'password', 'image_name')
+        cur = self.__conn.cursor()
+        out = []
+
+        cur.execute(sql)
+        ret = cur.fetchall()
+        for user in ret:
+            out.append(dict(zip(keys, user)))
+        return out
+
+
     # This function is used to run the sql commads the return one value.
     def run_ret(self, sql, args=None):
         cur = self.__conn.cursor()
 
-        cur.execute(sql, args)
+        if args:
+            cur.execute(sql, args)
+        else:
+            cur.execute(sql)
         return cur.fetchall()
 
     # This function runs the sql but does not return the value to the user
